@@ -1,0 +1,6 @@
+{
+  "name": "Mippedia",
+  "description": "Aplikasi Ensiklopedia Daring Multibahasa Mippedia dengan antarmuka native modern, penjelajahan artikel, pencarian cepat, editor wikitext, dan galeri berkas Commons.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
