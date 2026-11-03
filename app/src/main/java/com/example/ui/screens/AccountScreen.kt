@@ -131,33 +131,40 @@ fun AccountScreen(
 
                 if (currentUser.isAnon) {
                     Text(
-                        text = "Anda menggunakan akun sementara. Masuk ke akun Mippedia untuk menyimpan artikel bacaan, berpartisipasi dalam tugas komunitas, dan menyunting dengan nama pengguna resmi Anda.",
-                        style = MaterialTheme.typography.labelSmall,
+                        text = "Anda menggunakan akun sementara. Masuk atau buat akun Mippedia untuk menyimpan artikel bacaan dan menyunting dengan nama pengguna resmi Anda.",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 16.sp
+                        lineHeight = 18.sp
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
                             onClick = onLoginClick,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
-                            Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Masuk")
+                            Text("Masuk", fontWeight = FontWeight.Bold, maxLines = 1)
                         }
                         OutlinedButton(
                             onClick = onRegisterClick,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
-                            Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Daftar Akun")
+                            Text("Daftar Akun", fontWeight = FontWeight.SemiBold, maxLines = 1)
                         }
                     }
                 } else {
@@ -335,13 +342,6 @@ fun AccountScreen(
                     title = "Penyangkalan Umum (Disclaimer)",
                     subtitle = "Batasan tanggung jawab konten ensiklopedia",
                     onClick = onDisclaimerClick
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
-                SettingsItem(
-                    icon = Icons.Outlined.LockReset,
-                    title = "Atur Ulang Kata Sandi",
-                    subtitle = "Lupa sandi akun Mippedia Anda",
-                    onClick = onForgotPasswordClick
                 )
             }
         }

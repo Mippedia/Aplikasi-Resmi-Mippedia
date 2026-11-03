@@ -28,7 +28,7 @@ import com.example.ui.theme.MippediaBluePrimary
 import com.example.ui.theme.MippediaGreen
 import com.example.ui.theme.MippediaTealAccent
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     userPreferences: WikiUserPreferences?,
@@ -202,12 +202,11 @@ fun SettingsScreen(
                             }
                         }
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-                        // Stats & Badges
+                        // Stats Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
                                 Text(
@@ -224,16 +223,53 @@ fun SettingsScreen(
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    text = "Kelompok Hak",
+                                    text = "Status Akun",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                val cleanGroups = userPreferences.groups.filter { it != "*" }.joinToString(", ")
                                 Text(
-                                    text = if (cleanGroups.isNotBlank()) cleanGroups else "Pengguna",
+                                    text = "Aktif & Terverifikasi",
                                     fontWeight = FontWeight.SemiBold,
-                                    style = MaterialTheme.typography.bodyMedium
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MippediaGreen
                                 )
+                            }
+                        }
+
+                        // Kelompok Hak (User Groups) Section as neat Chips
+                        val cleanGroups = userPreferences.groups.filter { it != "*" }
+                        if (cleanGroups.isNotEmpty()) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Kelompok Hak & Peran (${cleanGroups.size})",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    cleanGroups.forEach { groupName ->
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                                        ) {
+                                            Text(
+                                                text = groupName,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
 

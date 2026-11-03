@@ -76,12 +76,18 @@ fun MippediaMainApp(viewModel: MippediaViewModel = viewModel()) {
     val searchHistory by viewModel.repository.searchHistory.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // Handle Back Press cleanly
+    val isSubScreenActive = uiState.showLoginSheet || uiState.showRegisterSheet || uiState.showForgotPasswordSheet ||
+            uiState.showSettingsScreen || uiState.showUserProfileScreen || uiState.showSavedArticlesFromAccount
+
+    // Handle Back Press cleanly across all full-screen views
     BackHandler(
-        enabled = uiState.showSavedArticlesFromAccount || uiState.showSettingsScreen || uiState.showUserProfileScreen || uiState.activeArticle != null || uiState.activeMedia != null || uiState.showEditor
+        enabled = isSubScreenActive || uiState.activeArticle != null || uiState.activeMedia != null || uiState.showEditor
     ) {
         when {
             uiState.showEditor -> viewModel.closeEditor()
+            uiState.showLoginSheet -> viewModel.showLogin(false)
+            uiState.showRegisterSheet -> viewModel.showRegister(false)
+            uiState.showForgotPasswordSheet -> viewModel.showForgotPassword(false)
             uiState.showSavedArticlesFromAccount -> viewModel.closeSavedArticlesFromAccount()
             uiState.showSettingsScreen -> viewModel.closeSettings()
             uiState.showUserProfileScreen -> viewModel.closeUserProfile()
@@ -92,77 +98,79 @@ fun MippediaMainApp(viewModel: MippediaViewModel = viewModel()) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    if (uiState.activeArticle != null) {
-                        Text(
-                            text = uiState.activeArticle!!.title,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    } else {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.mippedia_logo),
-                                contentDescription = "Logo",
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                            )
+            if (!isSubScreenActive) {
+                TopAppBar(
+                    title = {
+                        if (uiState.activeArticle != null) {
                             Text(
-                                text = "Mippedia",
-                                style = MaterialTheme.typography.titleLarge,
+                                text = uiState.activeArticle!!.title,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    if (uiState.activeArticle != null) {
-                        IconButton(onClick = { viewModel.closeArticle() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Kembali"
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    if (uiState.activeArticle != null) {
-                        IconButton(onClick = {
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, uiState.activeArticle!!.title)
-                                putExtra(Intent.EXTRA_TEXT, "${uiState.activeArticle!!.title} - ${uiState.currentLanguage.baseUrl}/wiki/${uiState.activeArticle!!.title}")
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.mippedia_logo),
+                                    contentDescription = "Logo",
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                )
+                                Text(
+                                    text = "Mippedia",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
-                            context.startActivity(Intent.createChooser(shareIntent, "Bagikan Artikel"))
-                        }) {
-                            Icon(Icons.Default.Share, contentDescription = "Bagikan")
                         }
-                    } else {
-                        LanguageSwitchPill(
-                            currentLanguage = uiState.currentLanguage,
-                            onToggle = { viewModel.toggleLanguageQuick() },
-                            modifier = Modifier.padding(end = 6.dp)
-                        )
-                        IconButton(onClick = { viewModel.openRandomArticle() }) {
-                            Icon(Icons.Default.Shuffle, contentDescription = "Acak")
+                    },
+                    navigationIcon = {
+                        if (uiState.activeArticle != null) {
+                            IconButton(onClick = { viewModel.closeArticle() }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Kembali"
+                                )
+                            }
                         }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    },
+                    actions = {
+                        if (uiState.activeArticle != null) {
+                            IconButton(onClick = {
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_SUBJECT, uiState.activeArticle!!.title)
+                                    putExtra(Intent.EXTRA_TEXT, "${uiState.activeArticle!!.title} - ${uiState.currentLanguage.baseUrl}/wiki/${uiState.activeArticle!!.title}")
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Bagikan Artikel"))
+                            }) {
+                                Icon(Icons.Default.Share, contentDescription = "Bagikan")
+                            }
+                        } else {
+                            LanguageSwitchPill(
+                                currentLanguage = uiState.currentLanguage,
+                                onToggle = { viewModel.toggleLanguageQuick() },
+                                modifier = Modifier.padding(end = 6.dp)
+                            )
+                            IconButton(onClick = { viewModel.openRandomArticle() }) {
+                                Icon(Icons.Default.Shuffle, contentDescription = "Acak")
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
-            )
+            }
         },
         bottomBar = {
-            if (uiState.activeArticle == null && !uiState.showSavedArticlesFromAccount && !uiState.showSettingsScreen && !uiState.showUserProfileScreen) {
+            if (!isSubScreenActive && uiState.activeArticle == null) {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 2.dp
@@ -224,7 +232,29 @@ fun MippediaMainApp(viewModel: MippediaViewModel = viewModel()) {
                 .padding(paddingValues)
         ) {
             // Main Content Area
-            if (uiState.showSavedArticlesFromAccount) {
+            if (uiState.showLoginSheet) {
+                LoginScreen(
+                    isLoading = uiState.isActionLoading,
+                    onLogin = { u, p -> viewModel.performLogin(u, p) },
+                    onGoToRegister = { viewModel.showRegister(true) },
+                    onGoToForgotPassword = { viewModel.showForgotPassword(true) },
+                    onBack = { viewModel.showLogin(false) }
+                )
+            } else if (uiState.showRegisterSheet) {
+                RegisterScreen(
+                    isLoading = uiState.isActionLoading,
+                    onRegister = { u, p, email -> viewModel.performRegister(u, p, email) },
+                    onGoToLogin = { viewModel.showLogin(true) },
+                    onBack = { viewModel.showRegister(false) }
+                )
+            } else if (uiState.showForgotPasswordSheet) {
+                ForgotPasswordScreen(
+                    isLoading = uiState.isActionLoading,
+                    onReset = { userOrEmail -> viewModel.performResetPassword(userOrEmail) },
+                    onGoToLogin = { viewModel.showLogin(true) },
+                    onBack = { viewModel.showForgotPassword(false) }
+                )
+            } else if (uiState.showSavedArticlesFromAccount) {
                 SavedArticlesScreen(
                     savedArticles = savedArticles,
                     onArticleClick = { viewModel.openArticle(it) },
@@ -444,24 +474,7 @@ fun MippediaMainApp(viewModel: MippediaViewModel = viewModel()) {
         )
     }
 
-    if (uiState.showLoginSheet) {
-        LoginBottomSheet(
-            isLoading = uiState.isActionLoading,
-            onLogin = { u, p -> viewModel.performLogin(u, p) },
-            onGoToRegister = { viewModel.showRegister(true) },
-            onGoToForgotPassword = { viewModel.showForgotPassword(true) },
-            onClose = { viewModel.showLogin(false) }
-        )
-    }
 
-    if (uiState.showRegisterSheet) {
-        RegisterBottomSheet(
-            isLoading = uiState.isActionLoading,
-            onRegister = { u, p, email -> viewModel.performRegister(u, p, email) },
-            onGoToLogin = { viewModel.showLogin(true) },
-            onClose = { viewModel.showRegister(false) }
-        )
-    }
 
     // Missing Article / Redlink Prompt Dialog
     if (uiState.missingArticlePrompt != null) {
@@ -519,14 +532,7 @@ fun MippediaMainApp(viewModel: MippediaViewModel = viewModel()) {
         )
     }
 
-    if (uiState.showForgotPasswordSheet) {
-        ForgotPasswordBottomSheet(
-            isLoading = uiState.isActionLoading,
-            onReset = { userOrEmail -> viewModel.performResetPassword(userOrEmail) },
-            onGoToLogin = { viewModel.showLogin(true) },
-            onClose = { viewModel.showForgotPassword(false) }
-        )
-    }
+
 
     if (uiState.showTocSheet && uiState.activeArticle != null) {
         TableOfContentsSheet(

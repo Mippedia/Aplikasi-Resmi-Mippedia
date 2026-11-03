@@ -35,7 +35,7 @@ import com.example.ui.theme.MippediaBluePrimary
 import com.example.ui.theme.MippediaGreen
 import com.example.ui.theme.MippediaTealAccent
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun UserProfileScreen(
     username: String,
@@ -44,7 +44,7 @@ fun UserProfileScreen(
     contributions: List<UserContributionItem>,
     isLoading: Boolean,
     currentLanguage: WikiLanguage = WikiLanguage.INDONESIAN,
-    onArticleClick: (String) -> Unit,
+    onArticleClick: (String) -> Unit = {},
     onBack: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
@@ -145,17 +145,19 @@ fun UserProfileScreen(
                         )
                     }
 
-                    // User Group Badges
+                    // User Group Badges (Neat FlowRow badges)
                     val groups = userPreferences?.groups?.filter { it != "*" } ?: emptyList()
                     if (groups.isNotEmpty()) {
-                        Row(
+                        FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp)
                         ) {
-                            groups.take(3).forEach { grp ->
+                            groups.forEach { grp ->
                                 Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                                 ) {
                                     Text(
                                         text = grp,
@@ -379,9 +381,7 @@ fun UserProfileScreen(
                                         shape = RoundedCornerShape(12.dp),
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { onArticleClick(item.title) }
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Column(
                                             modifier = Modifier.padding(14.dp),
