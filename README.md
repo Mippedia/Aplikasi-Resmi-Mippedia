@@ -1,6 +1,6 @@
 # Aplikasi Resmi Mippedia untuk Android
 
-Aplikasi Android resmi untuk ekosistem Mippedia (Ensiklopedia daring umum multibahasa berbasis MediaWiki).
+Aplikasi Android resmi untuk ekosistem Mippedia.
 
 ## Fitur Utama
 1. Dukungan Subdomain Multibahasa & Commons:
