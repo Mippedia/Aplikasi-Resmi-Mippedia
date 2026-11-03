@@ -251,7 +251,7 @@ class MippediaViewModel(application: Application) : AndroidViewModel(application
             val res = repository.apiClient.getArticle(cleanTitle, _uiState.value.currentLanguage)
             if (res.isSuccess) {
                 val article = res.getOrNull()
-                val isSaved = repository.isBookmarked(cleanTitle)
+                val isSaved = article != null && (repository.isBookmarked(article.title) || repository.isBookmarked(cleanTitle))
                 _uiState.update {
                     it.copy(
                         activeArticle = article,
@@ -279,7 +279,9 @@ class MippediaViewModel(application: Application) : AndroidViewModel(application
     fun toggleBookmarkCurrentArticle() {
         val article = _uiState.value.activeArticle ?: return
         repository.toggleBookmark(article)
-        _uiState.update { it.copy(isBookmarked = repository.isBookmarked(article.title)) }
+        val nowSaved = repository.isBookmarked(article.title)
+        _uiState.update { it.copy(isBookmarked = nowSaved) }
+        showToast(if (nowSaved) "Artikel disimpan ke Akun > Artikel Tersimpan" else "Artikel dihapus dari simpanan")
     }
 
     fun openRandomArticle() {

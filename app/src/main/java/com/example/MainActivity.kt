@@ -77,7 +77,8 @@ fun MippediaMainApp(viewModel: MippediaViewModel = viewModel()) {
     val context = LocalContext.current
 
     val isSubScreenActive = uiState.showLoginSheet || uiState.showRegisterSheet || uiState.showForgotPasswordSheet ||
-            uiState.showSettingsScreen || uiState.showUserProfileScreen || uiState.showSavedArticlesFromAccount
+            uiState.showSettingsScreen || uiState.showUserProfileScreen || uiState.showSavedArticlesFromAccount ||
+            uiState.showEditor || (uiState.activeMedia != null)
 
     // Handle Back Press cleanly across all full-screen views
     BackHandler(
@@ -261,6 +262,26 @@ fun MippediaMainApp(viewModel: MippediaViewModel = viewModel()) {
                     onRemoveArticle = { title -> viewModel.removeSavedArticle(title) },
                     onBack = { viewModel.closeSavedArticlesFromAccount() }
                 )
+            } else if (uiState.showEditor) {
+                ArticleEditorScreen(
+                    title = uiState.editorTitle,
+                    content = uiState.editorContent,
+                    summary = uiState.editorSummary,
+                    isMinor = uiState.isMinorEdit,
+                    isPublishing = uiState.isPublishing,
+                    currentUser = uiState.currentUser,
+                    onContentChange = { viewModel.updateEditorContent(it) },
+                    onSummaryChange = { viewModel.updateEditorSummary(it) },
+                    onMinorChange = { viewModel.toggleMinorEdit(it) },
+                    onInsertSyntax = { prefix, suffix -> viewModel.appendEditorSyntax(prefix, suffix) },
+                    onPublish = { viewModel.publishArticle() },
+                    onClose = { viewModel.closeEditor() }
+                )
+            } else if (uiState.activeMedia != null) {
+                MediaViewerScreen(
+                    media = uiState.activeMedia!!,
+                    onClose = { viewModel.closeMediaDetail() }
+                )
             } else if (uiState.showSettingsScreen) {
                 SettingsScreen(
                     userPreferences = uiState.userPreferences,
@@ -270,11 +291,13 @@ fun MippediaMainApp(viewModel: MippediaViewModel = viewModel()) {
                     fontFamily = uiState.readerFontFamily,
                     themeMode = uiState.themeMode,
                     dataSaver = uiState.dataSaver,
+                    searchHistoryCount = searchHistory.size,
                     onFontSizeChange = { viewModel.setReaderFontSize(it) },
                     onSerifChange = { viewModel.setReaderSerif(it) },
                     onFontFamilyChange = { viewModel.setReaderFontFamily(it) },
                     onThemeModeChange = { viewModel.setThemeMode(it) },
                     onDataSaverChange = { viewModel.setDataSaver(it) },
+                    onClearSearchHistory = { viewModel.repository.clearSearchHistory() },
                     onViewProfile = { username -> viewModel.openUserProfile(username) },
                     onViewContributions = { username -> viewModel.openUserProfile(username) },
                     onLogout = { viewModel.performLogout() },
@@ -300,6 +323,9 @@ fun MippediaMainApp(viewModel: MippediaViewModel = viewModel()) {
                     fontSizeSp = uiState.readerFontSizeSp,
                     useSerif = uiState.readerUseSerif,
                     fontFamilyName = uiState.readerFontFamily,
+                    onFontSizeChange = { viewModel.setReaderFontSize(it) },
+                    onFontFamilyChange = { viewModel.setReaderFontFamily(it) },
+                    onUseSerifChange = { viewModel.setReaderSerif(it) },
                     onEditClick = { viewModel.startEditingArticle() },
                     onLoginClick = { viewModel.showLogin(true) },
                     onBookmarkClick = { viewModel.toggleBookmarkCurrentArticle() },
@@ -449,31 +475,6 @@ fun MippediaMainApp(viewModel: MippediaViewModel = viewModel()) {
         }
     }
 
-    // Modal BottomSheets
-    if (uiState.showEditor) {
-        ArticleEditorSheet(
-            title = uiState.editorTitle,
-            content = uiState.editorContent,
-            summary = uiState.editorSummary,
-            isMinor = uiState.isMinorEdit,
-            isPublishing = uiState.isPublishing,
-            currentUser = uiState.currentUser,
-            onContentChange = { viewModel.updateEditorContent(it) },
-            onSummaryChange = { viewModel.updateEditorSummary(it) },
-            onMinorChange = { viewModel.toggleMinorEdit(it) },
-            onInsertSyntax = { prefix, suffix -> viewModel.appendEditorSyntax(prefix, suffix) },
-            onPublish = { viewModel.publishArticle() },
-            onClose = { viewModel.closeEditor() }
-        )
-    }
-
-    if (uiState.activeMedia != null) {
-        MediaViewerSheet(
-            media = uiState.activeMedia!!,
-            onClose = { viewModel.closeMediaDetail() }
-        )
-    }
-
 
 
     // Missing Article / Redlink Prompt Dialog
@@ -537,7 +538,10 @@ fun MippediaMainApp(viewModel: MippediaViewModel = viewModel()) {
     if (uiState.showTocSheet && uiState.activeArticle != null) {
         TableOfContentsSheet(
             sections = uiState.activeArticle!!.sections,
-            onSectionClick = { /* section clicked */ },
+            onSectionClick = { section ->
+                viewModel.openToc(false)
+                viewModel.showToast("Bagian: ${section.title}")
+            },
             onClose = { viewModel.openToc(false) }
         )
     }

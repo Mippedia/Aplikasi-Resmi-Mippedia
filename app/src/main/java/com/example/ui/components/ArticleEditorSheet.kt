@@ -1,14 +1,15 @@
 package com.example.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,12 +22,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.WikiUserInfo
 import com.example.ui.theme.MippediaAmber
-import com.example.ui.theme.MippediaBluePrimary
-import com.example.ui.theme.MippediaGreenSuccess
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ArticleEditorSheet(
+fun ArticleEditorScreen(
     title: String,
     content: String,
     summary: String,
@@ -41,62 +40,115 @@ fun ArticleEditorSheet(
     onClose: () -> Unit
 ) {
     var isPreviewMode by remember { mutableStateOf(false) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
     val syntaxScroll = rememberScrollState()
+    val screenScrollState = rememberScrollState()
 
-    val sheetScrollState = rememberScrollState()
+    // Clean back press handling: confirm if user typed something
+    BackHandler(enabled = !isPublishing) {
+        if (content.isNotBlank() || summary.isNotBlank()) {
+            showDiscardDialog = true
+        } else {
+            onClose()
+        }
+    }
 
-    ModalBottomSheet(
-        onDismissRequest = { if (!isPublishing) onClose() },
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surface
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.92f)
-                .imePadding()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .verticalScroll(sheetScrollState),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Sunting Artikel",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MippediaAmber) },
+            title = { Text("Tinggalkan Penyuntingan?") },
+            text = { Text("Perubahan yang belum diterbitkan akan hilang jika Anda kembali sekarang.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDiscardDialog = false
+                        onClose()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Buang Perubahan")
                 }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { isPreviewMode = !isPreviewMode }) {
-                        Text(if (isPreviewMode) "Kode Sumber" else "Pratinjau")
-                    }
-                    IconButton(onClick = onClose, enabled = !isPublishing) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Tutup")
-                    }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDiscardDialog = false }) {
+                    Text("Lanjutkan Menyunting")
                 }
             }
+        )
+    }
 
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = "Sunting Artikel",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(
+                        onClick = {
+                            if (content.isNotBlank() || summary.isNotBlank()) {
+                                showDiscardDialog = true
+                            } else {
+                                onClose()
+                            }
+                        },
+                        enabled = !isPublishing
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Kembali"
+                        )
+                    }
+                },
+                actions = {
+                    FilledTonalButton(
+                        onClick = { isPreviewMode = !isPreviewMode },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isPreviewMode) Icons.Default.EditNote else Icons.Default.Visibility,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(if (isPreviewMode) "Editor" else "Pratinjau", fontSize = 12.sp)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .imePadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .verticalScroll(screenScrollState),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             // Anon User Notice
             if (currentUser.isAnon) {
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = MippediaAmber.copy(alpha = 0.12f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(10.dp),
+                        modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -107,7 +159,7 @@ fun ArticleEditorSheet(
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = "Anda menyunting sebagai Akun Sementara / Anonim (${currentUser.username}). Perubahan Anda akan dicatat dalam riwayat halaman.",
+                            text = "Anda menyunting sebagai Akun Sementara / Anonim (${currentUser.username}). Alamat IP Anda akan dicatat dalam riwayat revisi halaman.",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -115,7 +167,7 @@ fun ArticleEditorSheet(
                 }
             }
 
-            // Quick Formatting Toolbar
+            // Quick Formatting Toolbar (Only in editor mode)
             if (!isPreviewMode) {
                 Row(
                     modifier = Modifier
@@ -140,6 +192,11 @@ fun ArticleEditorSheet(
                     )
                     FilterChip(
                         selected = false,
+                        onClick = { onInsertSyntax("=== ", " ===") },
+                        label = { Text("Subjudul ===", fontSize = 11.sp) }
+                    )
+                    FilterChip(
+                        selected = false,
                         onClick = { onInsertSyntax("[[", "]]") },
                         label = { Text("Tautan [[]]", fontSize = 11.sp) }
                     )
@@ -153,28 +210,36 @@ fun ArticleEditorSheet(
                         onClick = { onInsertSyntax("{{", "}}") },
                         label = { Text("Templat {{}}", fontSize = 11.sp) }
                     )
+                    FilterChip(
+                        selected = false,
+                        onClick = { onInsertSyntax("[[Kategori:", "]]") },
+                        label = { Text("Kategori", fontSize = 11.sp) }
+                    )
+                    FilterChip(
+                        selected = false,
+                        onClick = { onInsertSyntax("* ", "") },
+                        label = { Text("Daftar *", fontSize = 11.sp) }
+                    )
                 }
             }
 
-            // Editor Input vs Preview (Ensuring minimum height so soft keyboard never shrinks it to a slit)
-            // Editor Input vs Preview (Ensuring minimum height so soft keyboard never shrinks it to a slit)
+            // Editor Input vs Preview (Full dedicated space)
             if (isPreviewMode) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 260.dp, max = 460.dp),
+                        .heightIn(min = 320.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(14.dp)
-                            .verticalScroll(rememberScrollState()),
+                            .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            text = "Pratinjau Artikel",
+                            text = "Pratinjau Tampilan Artikel",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -192,7 +257,7 @@ fun ArticleEditorSheet(
                     onValueChange = onContentChange,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 260.dp, max = 460.dp),
+                        .heightIn(min = 320.dp, max = 500.dp),
                     placeholder = { Text("Tulis atau ubah isi wikitext artikel di sini...") },
                     textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontSize = 13.sp),
                     shape = RoundedCornerShape(12.dp)
@@ -205,6 +270,7 @@ fun ArticleEditorSheet(
                     value = summary,
                     onValueChange = onSummaryChange,
                     label = { Text("Ringkasan Suntingan") },
+                    placeholder = { Text("Jelaskan secara singkat apa yang Anda ubah...") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp)
@@ -219,7 +285,7 @@ fun ArticleEditorSheet(
                         onCheckedChange = onMinorChange
                     )
                     Text(
-                        text = "Tandai sebagai suntingan kecil",
+                        text = "Tandai sebagai suntingan kecil (minor edit)",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -231,7 +297,8 @@ fun ArticleEditorSheet(
                 enabled = !isPublishing && content.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+                    .height(50.dp)
+                    .padding(bottom = 8.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 if (isPublishing) {
@@ -241,11 +308,45 @@ fun ArticleEditorSheet(
                 } else {
                     Icon(imageVector = Icons.Default.Publish, contentDescription = "Terbitkan")
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Terbitkan Perubahan")
+                    Text("Terbitkan Perubahan Halaman", fontWeight = FontWeight.Bold)
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
+
+// Backward compatibility alias
+@Composable
+fun ArticleEditorSheet(
+    title: String,
+    content: String,
+    summary: String,
+    isMinor: Boolean,
+    isPublishing: Boolean,
+    currentUser: WikiUserInfo,
+    onContentChange: (String) -> Unit,
+    onSummaryChange: (String) -> Unit,
+    onMinorChange: (Boolean) -> Unit,
+    onInsertSyntax: (String, String) -> Unit,
+    onPublish: () -> Unit,
+    onClose: () -> Unit
+) {
+    ArticleEditorScreen(
+        title = title,
+        content = content,
+        summary = summary,
+        isMinor = isMinor,
+        isPublishing = isPublishing,
+        currentUser = currentUser,
+        onContentChange = onContentChange,
+        onSummaryChange = onSummaryChange,
+        onMinorChange = onMinorChange,
+        onInsertSyntax = onInsertSyntax,
+        onPublish = onPublish,
+        onClose = onClose
+    )
 }
 
 private sealed class PreviewItem {
@@ -367,7 +468,6 @@ private fun WikitextPreviewView(content: String) {
 /**
  * Cleans wikitext for preview so users do not see raw template tags
  * like {{SHORTDESC:...}}, {{Hatnote|...}}, {{Infobox...}}, or <ref> tags.
- * Pure text output with NO icons or emojis on headings.
  */
 fun cleanWikitextForPreview(rawWikitext: String): String {
     if (rawWikitext.isBlank()) return "(Belum ada teks untuk dipratinjau)"

@@ -47,6 +47,7 @@ import com.example.ui.theme.MippediaAmber
 import com.example.ui.theme.MippediaBluePrimary
 import com.example.ui.theme.MippediaTealAccent
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticleRenderer(
     article: WikiArticle,
@@ -65,6 +66,9 @@ fun ArticleRenderer(
     onRedlinkClick: (String) -> Unit = {},
     onUserClick: (String) -> Unit = {},
     fontFamilyName: String = "sans-serif",
+    onFontSizeChange: (Float) -> Unit = {},
+    onFontFamilyChange: (String) -> Unit = {},
+    onUseSerifChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -164,6 +168,167 @@ fun ArticleRenderer(
                 }
             }
         )
+    }
+
+    // Interactive Font & Typography Settings Modal (Requirement 8)
+    if (showFontDialog) {
+        ModalBottomSheet(
+            onDismissRequest = { showFontDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                    .padding(bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FormatSize,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Tampilan Teks & Tipografi",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    IconButton(onClick = { showFontDialog = false }) {
+                        Icon(Icons.Default.Close, contentDescription = "Tutup")
+                    }
+                }
+
+                // 1. Font Size Stepper & Slider
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Ukuran Tulisan Artikel",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                text = "${fontSizeSp.toInt()} sp",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        FilledTonalIconButton(
+                            onClick = {
+                                if (fontSizeSp > 13f) {
+                                    onFontSizeChange(fontSizeSp - 1f)
+                                }
+                            },
+                            enabled = fontSizeSp > 13f
+                        ) {
+                            Text("A-", fontWeight = FontWeight.Bold)
+                        }
+
+                        Slider(
+                            value = fontSizeSp,
+                            onValueChange = { onFontSizeChange(it) },
+                            valueRange = 13f..26f,
+                            steps = 12,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        FilledTonalIconButton(
+                            onClick = {
+                                if (fontSizeSp < 26f) {
+                                    onFontSizeChange(fontSizeSp + 1f)
+                                }
+                            },
+                            enabled = fontSizeSp < 26f
+                        ) {
+                            Text("A+", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                // 2. Font Family Options
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Jenis Huruf (Font Family)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    val fonts = listOf(
+                        Triple("sans-serif", "Sans-Serif", false),
+                        Triple("serif", "Serif", true),
+                        Triple("monospace", "Monospace", false)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        fonts.forEach { (key, label, isSerif) ->
+                            val isSelected = (isSerif && useSerif) || (!useSerif && fontFamilyName.equals(key, ignoreCase = true))
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    onFontFamilyChange(key)
+                                    onUseSerifChange(isSerif)
+                                },
+                                label = {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
+                // 3. Live Reading Sample
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Mippedia adalah ensiklopedia daring bebas dan multibahasa yang dikelola secara independen oleh Mippedia Community.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = (fontSizeSp - 2).sp,
+                            fontFamily = if (useSerif) FontFamily.Serif else if (fontFamilyName == "monospace") FontFamily.Monospace else FontFamily.Default
+                        ),
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+        }
     }
 
     LazyColumn(
@@ -380,13 +545,15 @@ fun ArticleRenderer(
                         )
                     }
 
-                    // Bookmark action
-                    IconButton(onClick = onBookmarkClick) {
-                        Icon(
-                            imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
-                            contentDescription = "Simpan",
-                            tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    // Bookmark action (Only visible for logged in users)
+                    if (!currentUser.isAnon) {
+                        IconButton(onClick = onBookmarkClick) {
+                            Icon(
+                                imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                                contentDescription = "Simpan",
+                                tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
 
                     // Table of Contents

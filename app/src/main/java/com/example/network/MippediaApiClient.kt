@@ -380,7 +380,7 @@ class MippediaApiClient(context: Context) {
     suspend fun getArticle(title: String, lang: WikiLanguage): Result<WikiArticle> = withContext(Dispatchers.IO) {
         try {
             val encodedTitle = URLEncoder.encode(title, "UTF-8")
-            val parseUrl = "${lang.apiEndpoint}?action=parse&page=$encodedTitle&prop=text|tocdata|displaytitle|categories|images|revid&redirects=1&format=json"
+            val parseUrl = "${lang.apiEndpoint}?action=parse&page=$encodedTitle&prop=text|sections|tocdata|displaytitle|categories|images|revid&redirects=1&format=json"
             val parseJson = getJson(parseUrl)
 
             if (parseJson.has("error")) {
@@ -403,31 +403,68 @@ class MippediaApiClient(context: Context) {
                 title
             } else null
 
-            // Extract sections
+            // Extract sections (Standard MediaWiki parse.sections + tocdata + HTML heading fallback)
             val sectionsList = mutableListOf<WikiSection>()
-            val tocData = parseObj.optJSONObject("tocdata")?.optJSONArray("entries")
-            if (tocData != null) {
-                for (i in 0 until tocData.length()) {
-                    val entry = tocData.getJSONObject(i)
-                    sectionsList.add(
-                        WikiSection(
-                            id = entry.optInt("index", i + 1),
-                            title = entry.optString("line", "").replace(Regex("<[^>]*>"), ""),
-                            level = entry.optInt("level", 2),
-                            anchor = entry.optString("anchor", "")
-                        )
-                    )
+            val sectionsArr = parseObj.optJSONArray("sections")
+            if (sectionsArr != null && sectionsArr.length() > 0) {
+                for (i in 0 until sectionsArr.length()) {
+                    val entry = sectionsArr.getJSONObject(i)
+                    val line = entry.optString("line", "").replace(Regex("<[^>]*>"), "").trim()
+                    val anchor = entry.optString("anchor", line.replace(" ", "_"))
+                    val level = entry.optInt("level", entry.optInt("toclevel", 2))
+                    val idx = entry.optInt("index", i + 1)
+                    if (line.isNotBlank()) {
+                        sectionsList.add(WikiSection(id = idx, title = line, level = level, anchor = anchor))
+                    }
+                }
+            } else {
+                val tocData = parseObj.optJSONObject("tocdata")?.optJSONArray("entries")
+                if (tocData != null && tocData.length() > 0) {
+                    for (i in 0 until tocData.length()) {
+                        val entry = tocData.getJSONObject(i)
+                        val line = entry.optString("line", "").replace(Regex("<[^>]*>"), "").trim()
+                        if (line.isNotBlank()) {
+                            sectionsList.add(
+                                WikiSection(
+                                    id = entry.optInt("index", i + 1),
+                                    title = line,
+                                    level = entry.optInt("level", 2),
+                                    anchor = entry.optString("anchor", "")
+                                )
+                            )
+                        }
+                    }
                 }
             }
 
-            // Extract categories
+            // HTML fallback if API returned no section metadata but headings exist in HTML
+            if (sectionsList.isEmpty() && rawHtml.isNotBlank()) {
+                val headingRegex = Regex("<h([2-4])[^>]*>(.*?)</h\\1>", RegexOption.IGNORE_CASE)
+                var indexCounter = 1
+                headingRegex.findAll(rawHtml).forEach { match ->
+                    val lvl = match.groupValues[1].toIntOrNull() ?: 2
+                    val rawTitle = match.groupValues[2].replace(Regex("<[^>]*>"), "").trim()
+                    if (rawTitle.isNotBlank() && !rawTitle.equals("Daftar isi", ignoreCase = true) && !rawTitle.equals("Contents", ignoreCase = true)) {
+                        val anchor = rawTitle.replace(" ", "_")
+                        sectionsList.add(WikiSection(id = indexCounter++, title = rawTitle, level = lvl, anchor = anchor))
+                    }
+                }
+            }
+
+            // Extract categories (skipping hidden and tracking categories)
             val categories = mutableListOf<String>()
             val catArray = parseObj.optJSONArray("categories")
             if (catArray != null) {
                 for (i in 0 until catArray.length()) {
                     val catObj = catArray.getJSONObject(i)
+                    val isHidden = catObj.has("hidden") || catObj.optBoolean("hidden", false)
                     val cat = catObj.optString("*", "")
-                    if (cat.isNotBlank()) categories.add(cat)
+                    if (!isHidden && cat.isNotBlank()) {
+                        val lower = cat.lowercase()
+                        if (!lower.startsWith("pages with") && !lower.startsWith("pages short with") && !lower.contains("short description")) {
+                            categories.add(cat)
+                        }
+                    }
                 }
             }
 
@@ -510,16 +547,18 @@ class MippediaApiClient(context: Context) {
             val heroImage = infobox?.imageUrl ?: extractFirstImage(rawHtml)
             val socialLinks = extractSocialLinks(rawHtml)
 
-            // Fetch related pages
+            // Fetch related pages (only genuine encyclopedia articles, excluding system/user pages)
             val relatedList = mutableListOf<String>()
             try {
-                val relUrl = "${lang.apiEndpoint}?action=query&list=backlinks&bltitle=$encodedTitle&bllimit=6&format=json"
+                val relUrl = "${lang.apiEndpoint}?action=query&list=backlinks&bltitle=$encodedTitle&blnamespace=0&bllimit=6&format=json"
                 val relJson = getJson(relUrl)
                 val blArray = relJson.optJSONObject("query")?.optJSONArray("backlinks")
                 if (blArray != null) {
                     for (i in 0 until blArray.length()) {
                         val t = blArray.getJSONObject(i).optString("title", "")
-                        if (t.isNotBlank() && t != title) relatedList.add(t)
+                        if (t.isNotBlank() && !t.equals(title, ignoreCase = true) && !t.contains(":")) {
+                            relatedList.add(t)
+                        }
                     }
                 }
             } catch (_: Exception) {}

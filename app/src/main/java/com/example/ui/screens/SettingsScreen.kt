@@ -38,20 +38,62 @@ fun SettingsScreen(
     fontFamily: String = "sans-serif",
     themeMode: String = "system",
     dataSaver: Boolean = false,
+    searchHistoryCount: Int = 0,
     onFontSizeChange: (Float) -> Unit,
     onSerifChange: (Boolean) -> Unit,
     onFontFamilyChange: (String) -> Unit = {},
     onThemeModeChange: (String) -> Unit = {},
     onDataSaverChange: (Boolean) -> Unit = {},
+    onClearSearchHistory: () -> Unit = {},
     onViewProfile: (String) -> Unit,
     onViewContributions: (String) -> Unit,
     onLogout: () -> Unit,
     onBack: () -> Unit,
     onClearCache: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var showClearCacheDialog by remember { mutableStateOf(false) }
+    var showClearHistoryDialog by remember { mutableStateOf(false) }
     var cacheClearedMessage by remember { mutableStateOf(false) }
+    var historyClearedMessage by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+
+    var cacheSizeStr by remember { mutableStateOf("0 KB") }
+    LaunchedEffect(cacheClearedMessage) {
+        try {
+            var totalBytes = 0L
+            context.cacheDir.walkTopDown().forEach { if (it.isFile) totalBytes += it.length() }
+            val mb = totalBytes / (1024f * 1024f)
+            cacheSizeStr = if (mb >= 1f) String.format("%.1f MB", mb) else "${totalBytes / 1024} KB"
+        } catch (_: Exception) {
+            cacheSizeStr = "0 KB"
+        }
+    }
+
+    if (showClearHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearHistoryDialog = false },
+            icon = { Icon(Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Hapus Riwayat Pencarian") },
+            text = { Text("Apakah Anda yakin ingin menghapus semua kata kunci pencarian terakhir yang tersimpan di perangkat ini?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showClearHistoryDialog = false
+                        onClearSearchHistory()
+                        historyClearedMessage = true
+                    }
+                ) {
+                    Text("Hapus Riwayat")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showClearHistoryDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
 
     if (showClearCacheDialog) {
         AlertDialog(
@@ -131,180 +173,197 @@ fun SettingsScreen(
                 }
             }
 
-            // 1. Real-time MediaWiki Account Section (Special:Preferences)
-            Text(
-                text = "AKUN & PREFERENSI SERVER",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                letterSpacing = 1.sp
-            )
-
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+            if (historyClearedMessage) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MippediaGreen.copy(alpha = 0.15f)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (isLoadingPrefs) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(vertical = 12.dp)
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("Mengambil data preferensi dari server Mippedia...", style = MaterialTheme.typography.bodyMedium)
-                        }
-                    } else if (userPreferences != null && userPreferences.username.isNotBlank()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(54.dp)
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MippediaGreen)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Riwayat pencarian lokal berhasil dihapus!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // 1. Real-time MediaWiki Account Section (Special:Preferences) - ONLY if logged in!
+            if (userPreferences != null && userPreferences.username.isNotBlank()) {
+                Text(
+                    text = "AKUN & PREFERENSI SERVER",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.sp
+                )
+
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        if (isLoadingPrefs) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 12.dp)
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Mengambil data preferensi dari server Mippedia...", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(54.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = userPreferences.username.take(1).uppercase(),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 24.sp,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = userPreferences.username.take(1).uppercase(),
+                                        text = userPreferences.username,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 24.sp,
-                                        color = Color.White
+                                        style = MaterialTheme.typography.titleMedium
                                     )
+                                    if (userPreferences.email.isNotBlank()) {
+                                        Text(
+                                            text = userPreferences.email,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (userPreferences.registrationDate.isNotBlank()) {
+                                        val formattedDate = userPreferences.registrationDate.take(10)
+                                        Text(
+                                            text = "Terdaftar sejak: $formattedDate",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = userPreferences.username,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                if (userPreferences.email.isNotBlank()) {
+
+                            // Stats Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
                                     Text(
-                                        text = userPreferences.email,
+                                        text = "Total Suntingan",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                }
-                                if (userPreferences.registrationDate.isNotBlank()) {
-                                    val formattedDate = userPreferences.registrationDate.take(10)
                                     Text(
-                                        text = "Terdaftar sejak: $formattedDate",
-                                        style = MaterialTheme.typography.labelSmall,
+                                        text = "${userPreferences.editCount} suntingan",
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "Status Akun",
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = "Aktif & Terverifikasi",
+                                        fontWeight = FontWeight.SemiBold,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MippediaGreen
                                     )
                                 }
                             }
-                        }
 
-                        // Stats Row
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Total Suntingan",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "${userPreferences.editCount} suntingan",
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    text = "Status Akun",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "Aktif & Terverifikasi",
-                                    fontWeight = FontWeight.SemiBold,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MippediaGreen
-                                )
-                            }
-                        }
-
-                        // Kelompok Hak (User Groups) Section as neat Chips
-                        val cleanGroups = userPreferences.groups.filter { it != "*" }
-                        if (cleanGroups.isNotEmpty()) {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = "Kelompok Hak & Peran (${cleanGroups.size})",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                FlowRow(
+                            // Kelompok Hak (User Groups) Section as neat Chips
+                            val cleanGroups = userPreferences.groups.filter { it != "*" }
+                            if (cleanGroups.isNotEmpty()) {
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    cleanGroups.forEach { groupName ->
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                                        ) {
-                                            Text(
-                                                text = groupName,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                            )
+                                    Text(
+                                        text = "Kelompok Hak & Peran (${cleanGroups.size})",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        cleanGroups.forEach { groupName ->
+                                            Surface(
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                                            ) {
+                                                Text(
+                                                    text = groupName,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                        // Quick Navigation Buttons
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { onViewProfile(userPreferences.username) },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(10.dp)
+                            // Quick Navigation Buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Default.AccountBox, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Profil Pengguna", fontSize = 12.sp)
-                            }
-                            OutlinedButton(
-                                onClick = { onViewContributions(userPreferences.username) },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Icon(Icons.Default.HistoryEdu, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Riwayat Kontribusi", fontSize = 12.sp)
+                                OutlinedButton(
+                                    onClick = { onViewProfile(userPreferences.username) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(Icons.Default.AccountBox, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Profil Pengguna", fontSize = 12.sp)
+                                }
+                                OutlinedButton(
+                                    onClick = { onViewContributions(userPreferences.username) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(Icons.Default.HistoryEdu, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Riwayat Kontribusi", fontSize = 12.sp)
+                                }
                             }
                         }
-                    } else {
-                        Text(
-                            text = "Silakan masuk ke akun Mippedia untuk melihat statistik kontribusi dan mengelola preferensi server Anda.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }
@@ -561,7 +620,39 @@ fun SettingsScreen(
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
-                                text = "Hapus data halaman webview, gambar coil, dan cache sementara",
+                                text = "Penyimpanan cache: $cacheSizeStr. Hapus cache thumbnail dan berkas sementara.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    // Clear Search History Action
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showClearHistoryDialog = true }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Hapus Riwayat Pencarian",
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "$searchHistoryCount kata kunci pencarian tersimpan di perangkat ini",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

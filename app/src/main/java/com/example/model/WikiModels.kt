@@ -38,11 +38,25 @@ data class WikiArticle(
     val language: WikiLanguage = WikiLanguage.INDONESIAN
 ) {
     val cleanCategories: List<String>
-        get() = categories.map {
-            it.replace('_', ' ')
-                .trim()
-                .replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase() else char.toString() }
-        }.filter { it.isNotBlank() }
+        get() = categories
+            .map { it.replace('_', ' ').trim() }
+            .filter { cat ->
+                val lower = cat.lowercase()
+                !lower.startsWith("pages with") &&
+                !lower.startsWith("pages using") &&
+                !lower.startsWith("pages containing") &&
+                !lower.startsWith("pages short with") &&
+                !lower.startsWith("articles with") &&
+                !lower.startsWith("articles using") &&
+                !lower.startsWith("halaman dengan") &&
+                !lower.startsWith("halaman yang") &&
+                !lower.startsWith("halaman tanpa") &&
+                !lower.startsWith("pemeliharaan") &&
+                !lower.contains("short description") &&
+                !lower.contains("tracking") &&
+                cat.isNotBlank()
+            }
+            .map { it.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase() else char.toString() } }
 }
 
 data class WikiSection(

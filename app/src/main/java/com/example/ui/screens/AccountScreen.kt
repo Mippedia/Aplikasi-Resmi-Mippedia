@@ -316,13 +316,15 @@ fun AccountScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                SettingsItem(
-                    icon = Icons.Outlined.Settings,
-                    title = "Pengaturan & Preferensi",
-                    subtitle = "Gaya huruf, ukuran teks, tema aplikasi, dan pembersihan cache",
-                    onClick = onSettingsClick
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                if (!currentUser.isAnon) {
+                    SettingsItem(
+                        icon = Icons.Outlined.Settings,
+                        title = "Pengaturan & Preferensi",
+                        subtitle = "Gaya huruf, ukuran teks, tema aplikasi, dan pembersihan cache",
+                        onClick = onSettingsClick
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                }
                 SettingsItem(
                     icon = Icons.Outlined.Info,
                     title = "Tentang Mippedia",
@@ -346,37 +348,41 @@ fun AccountScreen(
             }
         }
 
-        // 5. Branding & Version Info
+        // 5. Branding & Version Info (Clean centered layout with balanced line break)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Image(
                 painter = painterResource(id = R.drawable.mippedia_logo),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
             )
             Text(
                 text = "Mippedia Android v1.3",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Text(
-                text = "Mippedia dikelola secara independen oleh Mippedia Community",
+                text = "Mippedia dikelola secara independen oleh\nMippedia Community",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 16.sp
             )
             Text(
                 text = "Ensiklopedia Daring Bebas & Terbuka Multibahasa",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.outline,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
     }
